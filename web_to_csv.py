@@ -110,9 +110,9 @@ for url in ft_links:
             print(f"Skipping {url} — missing expected columns: {df.columns.tolist()}")
             continue
 
-        # --- Filter for Dean roles ---
-        df["Title"] = df["Title"].astype(str)
-        filtered = df[df["Title"].str.contains(r"\bDean\b", case=False, na=False)]
+        # Filter: only keep rows where the first word of the title is "Dean"
+        df["Title"] = df["Title"].astype(str).str.strip()
+        filtered = df[df["Title"].str.match(r"^Dean\b", case=False, na=False)]
 
         # --- Remove 'Dean's Office Specialist' rows ---
         filtered = filtered[~filtered["Title"].str.contains("Dean's Office Specialist", case=False, na=False)]

@@ -3,7 +3,8 @@ import requests
 import pandas as pd
 import re
 from io import BytesIO
-from urllib.parse import urljoin, quote
+from urllib.parse import urljoin, quote, unquote
+from pathlib import Path
 
 url = "https://profiles.shsu.edu/sms049/Images/Salary.html"
 headers = {
@@ -119,6 +120,20 @@ for url in ft_links:
 
         if filtered.empty:
             continue
+
+        # Extract fiscal year from filename
+        filename = Path(unquote(url)).name  # Decode %20 etc.
+        match = re.search(r'FY[\s_]*(\d{2,4})', filename, re.IGNORECASE)
+        if match:
+            year_str = match.group(1)
+            if len(year_str) == 2:
+                year = int("20" + year_str)
+            else:
+                year = int(year_str)
+        else:
+            year = None
+
+        df["Year"] = year
 
         filtered["Year"] = year
         if "Name" in filtered.columns and "Salary" in filtered.columns:

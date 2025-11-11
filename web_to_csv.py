@@ -47,6 +47,13 @@ with open("full_time_employee_links.txt", "w") as f:
 
 print("Links saved to full_time_employee_links.txt")
 
+# Remove the first occurrence of the 2018 link if it appears more than once
+for i, link in enumerate(ft_links):
+    filename = Path(unquote(link)).name
+    if re.search(r'FY[\s_]*2018', filename, re.IGNORECASE):
+        del ft_links[i]
+        break  # Only remove the first occurrence
+
 all_deans = pd.DataFrame(columns=["Year", "Title", "Name", "Salary"])
 
 for url in ft_links:

@@ -81,19 +81,39 @@ for url in ft_links:
     # Only process the first sheet
     sheet_name = xls.sheet_names[0]
 
+    def normalize_col(col):
+        if pd.isna(col):
+            return ""
+        return re.sub(r'\s+|[^a-zA-Z0-9]', '', str(col).lower())
+
+    col_map = {
+        "positiontitle": "Title",
+        "jobtitle": "Title",
+        "employeename": "Name",
+        "name": "Name",
+        "annualsalary": "Salary",
+        "salary": "Salary",
+        "annualpayrate": "Salary",
+        "fy18annualsalary": "Salary",
+        "fy19annualsalary": "Salary",
+    }
+
     df = None
-    # Try multiple rows as header to catch old sheets with shifted headers
-    for header_row in range(6):
+    for header_row in range(10):
         try:
-            df_try = pd.read_excel(xls, sheet_name=sheet_name, header=header_row, engine=xls.engine)
-            df_try.columns = [
-                str(c).strip().replace("\n", " ").replace("\r", "").title()
-                for c in df_try.columns
-            ]
+            df_try = pd.read_excel(
+                xls,
+                sheet_name=sheet_name,
+                header=header_row,
+                engine=xls.engine
+            )
+            # Normalize columns
+            df_try.columns = [normalize_col(c) for c in df_try.columns]
+            # Map to standard columns
+            mapped_cols = [col_map.get(c, c) for c in df_try.columns]
+            df_try.columns = mapped_cols
             # Check if essential columns exist
-            if any(col in df_try.columns for col in ["Title", "Position_Title"]) and \
-               any(col in df_try.columns for col in ["Name", "Employee_Name"]) and \
-               any(col in df_try.columns for col in ["Salary", "Annual_Salary"]):
+            if all(col in df_try.columns for col in ["Title", "Name", "Salary"]):
                 df = df_try
                 break
         except Exception:
@@ -101,18 +121,9 @@ for url in ft_links:
 
     if df is None:
         print(f"Skipping {url} — could not detect header row in sheet {sheet_name}")
+        sample = pd.read_excel(xls, sheet_name=sheet_name, nrows=10, engine=xls.engine)
+        print(sample.head())
         continue
-
-    # Rename old column names to standard
-    col_map = {
-        "Position_Title": "Title",
-        "Job_Title": "Title",
-        "Employee_Name": "Name",
-        "Name": "Name",
-        "Annual_Salary": "Salary",
-        "Salary": "Salary",
-    }
-    df.rename(columns=col_map, inplace=True)
 
     # Filter to rows where first word of Title is "Dean"
     df["Title"] = df["Title"].astype(str).str.strip()

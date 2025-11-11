@@ -1,13 +1,14 @@
-from bs4 import BeautifulSoup
-import requests
-import pandas as pd
-import re
-from io import BytesIO
 from urllib.parse import urljoin, quote, unquote
+from bs4 import BeautifulSoup
 from pathlib import Path
+from io import BytesIO
+import pandas as pd
+import requests
+import re
 
 # Home page URL
 url = "https://profiles.shsu.edu/sms049/Images/Salary.html"
+
 # Set a user-agent to mimic a browser
 headers = {
     "User-Agent": (
@@ -18,42 +19,35 @@ headers = {
 }
 
 # Fetch the HTML
-home_response = requests.get(url, headers=headers)
-home_response.raise_for_status()
-soup = BeautifulSoup(home_response.text, "html.parser")
+response = requests.get(url, headers=headers)
+response.raise_for_status()
+soup = BeautifulSoup(response.text, "html.parser")
 
 # Get all links from <a> html tags
 all_links = [a["href"] for a in soup.find_all("a", href=True)]
 
 # Get format patterns for new sheets and old sheets
-full_time_pattern = re.compile(r"Full\s*Time\s*Employee", re.IGNORECASE)
-old_year_pattern = re.compile(r"FY\s?\d{4}\.xlsx?$", re.IGNORECASE)
+new_pattern = re.compile(r"Full\s*Time\s*Employee", re.IGNORECASE)
+old_pattern = re.compile(r"FY\s?\d{4}\.xlsx?$", re.IGNORECASE)
 
 # Filter links for full-time employee Excel files
 ft_links = [
-    link
-    for link in all_links
+    link for link in all_links
     if link.lower().endswith((".xlsx", ".xls"))
-    and (full_time_pattern.search(link) or old_year_pattern.search(link))
+    and (new_pattern.search(link) or old_pattern.search(link))
 ]
 
-# Fix the links: resolve "../" and encode spaces properly
+# Clean the links: resolve "../" and encode spaces properly
 ft_links = [quote(urljoin(url, link), safe=":/") for link in ft_links]
 
-# Write to txt file for checking/debugging
-with open("full_time_employee_links.txt", "w") as f:
-    for link in ft_links:
-        f.write(link + "\n")
-
-print("Links saved to full_time_employee_links.txt")
-
-# Remove the first occurrence of the 2018 link if it appears more than once
+# Remove the weird floating first occurrence of the 2018 link
 for i, link in enumerate(ft_links):
     filename = Path(unquote(link)).name
     if re.search(r'FY[\s_]*2018', filename, re.IGNORECASE):
         del ft_links[i]
-        break  # Only remove the first occurrence
+        break
 
+# Set up dataframe to collect all salaries
 all_deans = pd.DataFrame(columns=["Year", "Title", "Name", "Salary"])
 
 for url in ft_links:
@@ -68,6 +62,7 @@ for url in ft_links:
     else:
         year = None
 
+    # Fetch the Excel file
     try:
         response = requests.get(url)
         response.raise_for_status()
@@ -75,7 +70,7 @@ for url in ft_links:
         print(f"Error fetching {url}: {e}")
         continue
 
-    # Try both engines
+    # Try both Excel engines for different formats
     try:
         xls = pd.ExcelFile(BytesIO(response.content), engine="openpyxl")
     except Exception:
@@ -85,14 +80,16 @@ for url in ft_links:
             print(f"Could not open {url} with any engine: {e}")
             continue
 
-    # Only process the first sheet
+    # Only process the first sheet of each file
     sheet_name = xls.sheet_names[0]
 
+    # Normalize column names
     def normalize_col(col):
         if pd.isna(col):
             return ""
         return re.sub(r'\s+|[^a-zA-Z0-9]', '', str(col).lower())
 
+    # Standardize column names
     col_map = {
         "positiontitle": "Title",
         "jobtitle": "Title",
@@ -106,6 +103,7 @@ for url in ft_links:
         "fy19annualsalary": "Salary",
     }
 
+    # Attempt to read the sheet with different header rows
     df = None
     for header_row in range(10):
         try:
@@ -117,10 +115,10 @@ for url in ft_links:
             )
             # Normalize columns
             normalized_cols = [normalize_col(c) for c in df_try.columns]
-            print(f"Normalized columns for {url} (header_row={header_row}): {normalized_cols}")
+            
             # Map to standard columns
             mapped_cols = [col_map.get(c, c) for c in normalized_cols]
-            print(f"Mapped columns for {url} (header_row={header_row}): {mapped_cols}")
+            
             df_try.columns = mapped_cols
             # Check if essential columns exist
             if all(col in df_try.columns for col in ["Title", "Name", "Salary"]):

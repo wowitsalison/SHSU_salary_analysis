@@ -89,6 +89,7 @@ for url in ft_links:
     col_map = {
         "positiontitle": "Title",
         "jobtitle": "Title",
+        "title": "Title",
         "employeename": "Name",
         "name": "Name",
         "annualsalary": "Salary",
@@ -108,9 +109,11 @@ for url in ft_links:
                 engine=xls.engine
             )
             # Normalize columns
-            df_try.columns = [normalize_col(c) for c in df_try.columns]
+            normalized_cols = [normalize_col(c) for c in df_try.columns]
+            print(f"Normalized columns for {url} (header_row={header_row}): {normalized_cols}")
             # Map to standard columns
-            mapped_cols = [col_map.get(c, c) for c in df_try.columns]
+            mapped_cols = [col_map.get(c, c) for c in normalized_cols]
+            print(f"Mapped columns for {url} (header_row={header_row}): {mapped_cols}")
             df_try.columns = mapped_cols
             # Check if essential columns exist
             if all(col in df_try.columns for col in ["Title", "Name", "Salary"]):

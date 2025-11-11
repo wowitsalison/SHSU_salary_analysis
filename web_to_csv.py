@@ -40,12 +40,8 @@ ft_links = [
 # Clean the links: resolve "../" and encode spaces properly
 ft_links = [quote(urljoin(url, link), safe=":/") for link in ft_links]
 
-# Remove the weird floating first occurrence of the 2018 link
-for i, link in enumerate(ft_links):
-    filename = Path(unquote(link)).name
-    if re.search(r'FY[\s_]*2018', filename, re.IGNORECASE):
-        del ft_links[i]
-        break
+# Remove all duplicates while preserving order
+ft_links = list(dict.fromkeys(ft_links))
 
 # Set up dataframe to collect all salaries
 all_deans = pd.DataFrame(columns=["Year", "Title", "Name", "Salary"])

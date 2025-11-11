@@ -40,6 +40,7 @@ ft_links = [
 # Fix the links: resolve "../" and encode spaces properly
 ft_links = [quote(urljoin(url, link), safe=":/") for link in ft_links]
 
+# Write to txt file for checking/debugging
 with open("full_time_employee_links.txt", "w") as f:
     for link in ft_links:
         f.write(link + "\n")
@@ -50,8 +51,15 @@ all_deans = pd.DataFrame(columns=["Year", "Title", "Name", "Salary"])
 
 for url in ft_links:
     print(f"Processing {url}")
-    year_match = re.search(r'FY\s?(\d{2,4})', url, re.IGNORECASE)
-    year = year_match.group(1) if year_match else "Unknown"
+
+    # Extract year from filename
+    filename = Path(unquote(url)).name
+    match = re.search(r'FY[\s_]*(\d{2,4})', filename, re.IGNORECASE)
+    if match:
+        year_str = match.group(1)
+        year = int("20" + year_str) if len(year_str) == 2 else int(year_str)
+    else:
+        year = None
 
     try:
         response = requests.get(url)
@@ -70,67 +78,60 @@ for url in ft_links:
             print(f"Could not open {url} with any engine: {e}")
             continue
 
-    for sheet_name in xls.sheet_names:
+    # Only process the first sheet
+    sheet_name = xls.sheet_names[0]
+
+    df = None
+    # Try multiple rows as header to catch old sheets with shifted headers
+    for header_row in range(6):
         try:
-            df = pd.read_excel(xls, sheet_name=sheet_name, engine=xls.engine)
-        except Exception as e:
-            print(f"Error reading sheet {sheet_name} from {url}: {e}")
+            df_try = pd.read_excel(xls, sheet_name=sheet_name, header=header_row, engine=xls.engine)
+            df_try.columns = [
+                str(c).strip().replace("\n", " ").replace("\r", "").title()
+                for c in df_try.columns
+            ]
+            # Check if essential columns exist
+            if any(col in df_try.columns for col in ["Title", "Position_Title"]) and \
+               any(col in df_try.columns for col in ["Name", "Employee_Name"]) and \
+               any(col in df_try.columns for col in ["Salary", "Annual_Salary"]):
+                df = df_try
+                break
+        except Exception:
             continue
 
-        # Convert non-string headers to strings safely
-        df.columns = [
-            str(col).strip().replace("\n", " ").replace("\r", "").title()
-            for col in df.columns
-        ]
+    if df is None:
+        print(f"Skipping {url} — could not detect header row in sheet {sheet_name}")
+        continue
 
-        # Handle different naming conventions
-        col_map = {
-            "Position_Title": "Title",
-            "Home_Organization_Desc": "Department",
-            "Annual_Salary": "Salary",
-            "Employee_Name": "Name",
-        }
+    # Rename old column names to standard
+    col_map = {
+        "Position_Title": "Title",
+        "Job_Title": "Title",
+        "Employee_Name": "Name",
+        "Name": "Name",
+        "Annual_Salary": "Salary",
+        "Salary": "Salary",
+    }
+    df.rename(columns=col_map, inplace=True)
 
-        df.rename(columns=col_map, inplace=True)
+    # Filter to rows where first word of Title is "Dean"
+    df["Title"] = df["Title"].astype(str).str.strip()
+    filtered = df[df["Title"].str.match(r"^Dean\b", case=False, na=False)]
+    filtered = filtered[~filtered["Title"].str.contains("Dean's Office Specialist", case=False, na=False)]
 
-        # Detect and skip summary/title rows
-        if df.shape[1] < 3 or not any("Title" in c for c in df.columns):
-            print(f"Skipping {url} — missing expected columns: {df.columns.tolist()}")
-            continue
+    if filtered.empty:
+        continue
 
-        # Filter to only keep rows where the first word of the title is "Dean"
-        df["Title"] = df["Title"].astype(str).str.strip()
-        filtered = df[df["Title"].str.match(r"^Dean\b", case=False, na=False)]
+    filtered["Year"] = year
 
-        # Remove 'Dean's Office Specialist' rows
-        filtered = filtered[~filtered["Title"].str.contains("Dean's Office Specialist", case=False, na=False)]
+    if "Name" in filtered.columns and "Salary" in filtered.columns:
+        all_deans = pd.concat(
+            [all_deans, filtered[["Year", "Title", "Name", "Salary"]]],
+            ignore_index=True
+        )
+    else:
+        print(f"Skipping {url} — after filtering, missing Name or Salary columns.")
 
-        if filtered.empty:
-            continue
-
-        # Extract fiscal year from filename
-        filename = Path(unquote(url)).name  # Decode %20 etc.
-        match = re.search(r'FY[\s_]*(\d{2,4})', filename, re.IGNORECASE)
-        if match:
-            year_str = match.group(1)
-            if len(year_str) == 2:
-                year = int("20" + year_str)
-            else:
-                year = int(year_str)
-        else:
-            year = None
-
-        df["Year"] = year
-
-        filtered["Year"] = year
-        if "Name" in filtered.columns and "Salary" in filtered.columns:
-            all_deans = pd.concat(
-                [all_deans, filtered[["Year", "Title", "Name", "Salary"]]],
-                ignore_index=True
-            )
-        else:
-            print(f"Skipping {url} — after filtering, missing Name or Salary columns.")
-            
 # Save to CSV
 all_deans.to_csv("deans_salaries.csv", index=False)
 print("All Dean salaries saved to deans_salaries.csv")

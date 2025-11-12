@@ -1,23 +1,3 @@
-name_columns_by_year = {
-    2009: "name",
-    2010: "name",
-    2011: "name",
-    2012: "name",
-    2013: "name",
-    2014: "name",
-    2015: "name",
-    2016: "name",
-    2017: "name",
-    2018: "name",
-    2019: "name",
-    2020: "name",
-    2021: "name",
-    2022: "name",
-    2023: "name",
-    2024: "name",
-    2025: "name"
-}
-
 title_columns_by_year = {
     2009: "title",
     2010: "title",
@@ -39,6 +19,8 @@ title_columns_by_year = {
 }
 
 dept_columns_by_year = {
+    2009: None,
+    2019: None,
     2011: "timesheetorganizationdesc",
     2012: "timesheetorganizationdesc",
     2013: "timesheetorganizationdesc",
@@ -46,6 +28,7 @@ dept_columns_by_year = {
     2015: "timesheetorganizationdesc",
     2016: "timesheetorganizationdesc",
     2017: "timesheetorganizationdesc",
+    2018: None,
     2019: "timesheetorganizationdesc",
     2020: "timesheetorganizationdesc",
     2021: "timesheetorganizationdesc",

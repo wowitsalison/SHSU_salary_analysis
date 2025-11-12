@@ -158,6 +158,9 @@ for url in ft_links:
     # Add year
     df["Year"] = year
 
+    # Standardize names to title case
+    df["Name"] = df["Name"].astype(str).str.title()
+
     # Keep only columns we need
     df["Year"] = year
     df = df[["Year", "Title", "Name", "Salary"]]

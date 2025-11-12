@@ -112,30 +112,42 @@ for url in ft_links:
         continue
 
     # Normalize columns
-    df.columns = [normalize_col(c) for c in df.columns]
+    df.columns = [re.sub(r'\s+|[^a-zA-Z0-9]', '', str(c).lower()) for c in df.columns]
 
     # Get column names for this year
-    title_col = normalize_col(mappings.title_columns_by_year.get(year)) if mappings.title_columns_by_year.get(year) else None
-    dept_col = normalize_col(mappings.dept_columns_by_year.get(year)) if mappings.dept_columns_by_year.get(year) else None
-    salary_col = normalize_col(mappings.salary_columns_by_year.get(year)) if mappings.salary_columns_by_year.get(year) else None
+    title_col = mappings.title_columns_by_year.get(year)
+    dept_col = mappings.dept_columns_by_year.get(year)
+    salary_col = mappings.salary_columns_by_year.get(year)
     name_col = "name"
 
     # Check for missing required columns
-    missing_cols = [col for col in [title_col, name_col, salary_col] if not col or col not in df.columns]
-    if missing_cols:
-        print(f"Skipping {year}: missing required columns {missing_cols}")
+    required_cols = [mappings.title_columns_by_year.get(year), "name", mappings.salary_columns_by_year.get(year)]
+
+    found = False
+    for header_row in range(10):  # Try first 10 rows as header
+        df_try = pd.read_excel(xls, sheet_name=sheet_name, header=header_row, engine=xls.engine)
+        norm_cols = [re.sub(r'\s+|[^a-zA-Z0-9]', '', str(c).lower()) for c in df_try.columns]
+        if all(col in norm_cols for col in required_cols if col):
+            df = df_try
+            df.columns = norm_cols
+            found = True
+            break
+
+    if not found:
+        print(f"Skipping {year}: could not find header row with required columns {required_cols}")
         continue
 
     # Rename to consistent names
-    rename_map = {}
-    if title_col: rename_map[title_col] = "Title"
-    if dept_col: rename_map[dept_col] = "Dept"
-    if salary_col: rename_map[salary_col] = "Salary"
-    rename_map[name_col] = "Name"
+    rename_map = {name_col: "Name", title_col: "Title", salary_col: "Salary"}
+    if dept_col and dept_col in df.columns:
+        rename_map[dept_col] = "Dept"
     df.rename(columns=rename_map, inplace=True)
 
     # Keep only rows containing "Dean"
-    df = df[df["Title"].astype(str).str.contains(r"\bdean\b", case=False, na=False)]
+    df = df[df["Title"].astype(str).str.contains(r"^Dean\b", case=False, na=False)]
+
+    # Skip rows where job title is "Dean's Office Specialist"
+    df = df[~df["Title"].astype(str).str.contains(r"dean'?s office specialist", case=False, na=False)]
 
     # Create simplified dean title
     if "Dept" in df.columns:
@@ -147,8 +159,8 @@ for url in ft_links:
     df["Year"] = year
 
     # Keep only columns we need
-    keep_cols = [c for c in ["Year", "Title", "Name", "Salary"] if c in df.columns]
-    df = df[keep_cols]
+    df["Year"] = year
+    df = df[["Year", "Title", "Name", "Salary"]]
 
     all_deans = pd.concat([all_deans, df], ignore_index=True)
 

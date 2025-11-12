@@ -65,5 +65,17 @@ abbreviations = {
     "cobaofficeofthedean": "COBA",
     "cosetofficeofthedean": "COSET",
     "cohsofficeofthedean": "COHS",
-    "collegeofcriminaljustice": "CJ"
+    "alliedhealthofficeofthedean": "COHS",
+    "collegeofcriminaljustice": "CJ",
+    "offoftheprovandvpforacadaff": "Grad Studies & Assoc Prov",
+    "comdeansoffice": "COM",
+    "osteopathicmedicine": "COM",
+    "deanofstudentsoffice": "of Students",
+    "officeofthedeanofstudents": "of Students",
+    "officeofdeanofstudents": "of Students",
+    "departmentofhistory": "of Students",
+    "deptofhistory": "of Students",
+    "cofamcofficeofthedean": "COFAMC",
+    "graduatestudiesoffice": "Grad Studies & Assoc Prov",
+    "cosofficeofthedean": "COS"
 }

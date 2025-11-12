@@ -72,17 +72,6 @@ def normalize_dean_title(title, dept=None):
         dept_str = str(dept).strip()
 
         if dept_str and dept_str.lower() not in ["nan", "none", ""]:
-            # Map department named to abbreviations
-            abbreviations = {
-                "cam office of the dean" : "CAM",
-                "office of the dean ce" : "COE",
-                "chss office of the dean" : "CHSS",
-                "coba office of the dean" : "COBA",
-                "coset office of the dean" : "COSET",
-                "cohs office of the dean" : "COHS",
-                "college of criminal justice" : "CJ"
-            }
-
             # Normalize dept string for matching
             dept_norm = dept_str.lower()
             # If the dept is already an abbreviation (e.g., "COM", "COE"), accept it
@@ -149,20 +138,6 @@ for url in ft_links:
 
     # Only process the first sheet of each file
     sheet_name = xls.sheet_names[0]
-
-    # Standardize column names
-    col_map = {
-        "positiontitle": "Title",
-        "jobtitle": "Title",
-        "title": "Title",
-        "employeename": "Name",
-        "name": "Name",
-        "annualsalary": "Salary",
-        "salary": "Salary",
-        "annualpayrate": "Salary",
-        "fy18annualsalary": "Salary",
-        "fy19annualsalary": "Salary",
-    }
 
     # Attempt to read the sheet with different header rows
     df = None

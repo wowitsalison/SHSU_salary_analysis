@@ -5,6 +5,7 @@ from io import BytesIO
 import pandas as pd
 import requests
 import re
+import mappings
 
 # Home page URL
 url = "https://profiles.shsu.edu/sms049/Images/Salary.html"
@@ -17,6 +18,11 @@ headers = {
         "Chrome/58.0.3029.110 Safari/537.3"
     )
 }
+
+#Set up dataframe to collect all salaries
+all_deans = pd.DataFrame(columns=["Year", "Title", "Name", "Salary"])
+
+# -------- Grab and process all relevant links from the webpage --------
 
 # Fetch the HTML
 response = requests.get(url, headers=headers)
@@ -43,8 +49,28 @@ ft_links = [quote(urljoin(url, link), safe=":/") for link in ft_links]
 # Remove all duplicates while preserving order
 ft_links = list(dict.fromkeys(ft_links))
 
-# Set up dataframe to collect all salaries
-all_deans = pd.DataFrame(columns=["Year", "Title", "Name", "Salary"])
+# -------- Normalization helper functions --------
+
+# Normalize column names
+def normalize_col(col):
+    if pd.isna(col):
+        return ""
+    return re.sub(r'\s+|[^a-zA-Z0-9]', '', str(col).lower())
+
+# Normalize dean titles
+def normalize_dean_title(dept):
+    if not isinstance(dept, str) or not dept.strip():
+        return "Dean Unknown"
+    dept_norm = re.sub(r'[^a-zA-Z0-9]', '', dept.lower())
+    for full, abbr in mappings.abbreviations.items():
+        if full in dept_norm:
+            return f"Dean {abbr}"
+    # fallback: take initials
+    words = re.findall(r"[A-Za-z]+", dept)
+    initials = ''.join(w[0].upper() for w in words if w)
+    return f"Dean {initials or '?'}"
+
+# -------- Process each Excel file --------
 
 for url in ft_links:
     print(f"Processing {url}")
@@ -56,7 +82,8 @@ for url in ft_links:
         year_str = match.group(1)
         year = int("20" + year_str) if len(year_str) == 2 else int(year_str)
     else:
-        year = None
+        print(f"Could not determine year from {filename}")
+        continue
 
     # Fetch the Excel file
     try:
@@ -76,77 +103,71 @@ for url in ft_links:
             print(f"Could not open {url} with any engine: {e}")
             continue
 
-    # Only process the first sheet of each file
+    # Read the first sheet of each file
     sheet_name = xls.sheet_names[0]
-
-    # Normalize column names
-    def normalize_col(col):
-        if pd.isna(col):
-            return ""
-        return re.sub(r'\s+|[^a-zA-Z0-9]', '', str(col).lower())
-
-    # Standardize column names
-    col_map = {
-        "positiontitle": "Title",
-        "jobtitle": "Title",
-        "title": "Title",
-        "employeename": "Name",
-        "name": "Name",
-        "annualsalary": "Salary",
-        "salary": "Salary",
-        "annualpayrate": "Salary",
-        "fy18annualsalary": "Salary",
-        "fy19annualsalary": "Salary",
-    }
-
-    # Attempt to read the sheet with different header rows
-    df = None
-    for header_row in range(10):
-        try:
-            df_try = pd.read_excel(
-                xls,
-                sheet_name=sheet_name,
-                header=header_row,
-                engine=xls.engine
-            )
-            # Normalize columns
-            normalized_cols = [normalize_col(c) for c in df_try.columns]
-            
-            # Map to standard columns
-            mapped_cols = [col_map.get(c, c) for c in normalized_cols]
-            
-            df_try.columns = mapped_cols
-            # Check if essential columns exist
-            if all(col in df_try.columns for col in ["Title", "Name", "Salary"]):
-                df = df_try
-                break
-        except Exception:
-            continue
-
-    if df is None:
-        print(f"Skipping {url} — could not detect header row in sheet {sheet_name}")
-        sample = pd.read_excel(xls, sheet_name=sheet_name, nrows=10, engine=xls.engine)
-        print(sample.head())
+    try:
+        df = pd.read_excel(xls, sheet_name=sheet_name, engine=xls.engine)
+    except Exception as e:
+        print(f"Could not read {sheet_name} from {filename}: {e}")
         continue
 
-    # Filter to rows where first word of Title is "Dean"
-    df["Title"] = df["Title"].astype(str).str.strip()
-    filtered = df[df["Title"].str.match(r"^Dean\b", case=False, na=False)]
-    filtered = filtered[~filtered["Title"].str.contains("Dean's Office Specialist", case=False, na=False)]
+    # Normalize columns
+    df.columns = [re.sub(r'\s+|[^a-zA-Z0-9]', '', str(c).lower()) for c in df.columns]
 
-    if filtered.empty:
+    # Get column names for this year
+    title_col = mappings.title_columns_by_year.get(year)
+    dept_col = mappings.dept_columns_by_year.get(year)
+    salary_col = mappings.salary_columns_by_year.get(year)
+    name_col = "name"
+
+    # Check for missing required columns
+    required_cols = [mappings.title_columns_by_year.get(year), "name", mappings.salary_columns_by_year.get(year)]
+
+    found = False
+    for header_row in range(10):  # Try first 10 rows as header
+        df_try = pd.read_excel(xls, sheet_name=sheet_name, header=header_row, engine=xls.engine)
+        norm_cols = [re.sub(r'\s+|[^a-zA-Z0-9]', '', str(c).lower()) for c in df_try.columns]
+        if all(col in norm_cols for col in required_cols if col):
+            df = df_try
+            df.columns = norm_cols
+            found = True
+            break
+
+    if not found:
+        print(f"Skipping {year}: could not find header row with required columns {required_cols}")
         continue
 
-    filtered["Year"] = year
+    # Rename to consistent names
+    rename_map = {name_col: "Name", title_col: "Title", salary_col: "Salary"}
+    if dept_col and dept_col in df.columns:
+        rename_map[dept_col] = "Dept"
+    df.rename(columns=rename_map, inplace=True)
 
-    if "Name" in filtered.columns and "Salary" in filtered.columns:
-        all_deans = pd.concat(
-            [all_deans, filtered[["Year", "Title", "Name", "Salary"]]],
-            ignore_index=True
-        )
+    # Keep only rows containing "Dean"
+    df = df[df["Title"].astype(str).str.contains(r"^Dean\b", case=False, na=False)]
+
+    # Skip rows where job title is "Dean's Office Specialist"
+    df = df[~df["Title"].astype(str).str.contains(r"dean'?s office specialist", case=False, na=False)]
+
+    # Create simplified dean title
+    if "Dept" in df.columns:
+        df["Title"] = df["Dept"].apply(normalize_dean_title)
     else:
-        print(f"Skipping {url} — after filtering, missing Name or Salary columns.")
+        df["Title"] = "Dean of College"
 
-# Save to CSV
+    # Add year
+    df["Year"] = year
+
+    # Standardize names to title case
+    df["Name"] = df["Name"].astype(str).str.title()
+
+    # Keep only columns we need
+    df["Year"] = year
+    df = df[["Year", "Title", "Name", "Salary"]]
+
+    all_deans = pd.concat([all_deans, df], ignore_index=True)
+
+# -------- Save to CSV --------
+
 all_deans.to_csv("deans_salaries.csv", index=False)
 print("All Dean salaries saved to deans_salaries.csv")

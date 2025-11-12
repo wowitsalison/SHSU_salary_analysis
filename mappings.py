@@ -1,0 +1,81 @@
+title_columns_by_year = {
+    2009: "title",
+    2010: "title",
+    2011: "positiontitle",
+    2012: "positiontitle",
+    2013: "positiontitle",
+    2014: "positiontitle",
+    2015: "positiontitle",
+    2016: "positiontitle",
+    2017: "positiontitle",
+    2018: "positiontitle",
+    2019: "positiontitle",
+    2020: "positiontitle",
+    2021: "positiontitle",
+    2022: "positiontitle",
+    2023: "positiontitle",
+    2024: "positiontitle",
+    2025: "positiontitle"
+}
+
+dept_columns_by_year = {
+    2009: None,
+    2010: None,
+    2011: "timesheetorganizationdesc",
+    2012: "timesheetorganizationdesc",
+    2013: "timesheetorganizationdesc",
+    2014: "timesheetorganizationdesc",
+    2015: "timesheetorganizationdesc",
+    2016: "timesheetorganizationdesc",
+    2017: "timesheetorganizationdesc",
+    2018: None,
+    2019: "timesheetorganizationdesc",
+    2020: "timesheetorganizationdesc",
+    2021: "timesheetorganizationdesc",
+    2022: "timesheetorganizationdesc",
+    2023: "timesheetorganizationdesc",
+    2024: "timesheetorganizationdesc",
+    2025: "timesheetorganizationdesc"
+}
+
+salary_columns_by_year = {
+    2009: "annualpayrate",
+    2010: "annualpayrate",
+    2011: "annualsalary",
+    2012: "annualsalary",
+    2013: "annualsalary",
+    2014: "annualsalary",
+    2015: "annualsalary",
+    2016: "annualsalary",
+    2017: "annualsalary",
+    2018: "fy18annualsalary",
+    2019: "annualsalary",
+    2020: "annualsalary",
+    2021: "annualsalary",
+    2022: "annualsalary",
+    2023: "annualsalary",
+    2024: "annualsalary",
+    2025: "annualsalary"
+}
+
+abbreviations = {
+    "camofficeofthedean": "CAM",
+    "officeofthedeance": "COE",
+    "chssofficeofthedean": "CHSS",
+    "cobaofficeofthedean": "COBA",
+    "cosetofficeofthedean": "COSET",
+    "cohsofficeofthedean": "COHS",
+    "alliedhealthofficeofthedean": "COHS",
+    "collegeofcriminaljustice": "CJ",
+    "offoftheprovandvpforacadaff": "Grad Studies & Assoc Prov",
+    "comdeansoffice": "COM",
+    "osteopathicmedicine": "COM",
+    "deanofstudentsoffice": "of Students",
+    "officeofthedeanofstudents": "of Students",
+    "officeofdeanofstudents": "of Students",
+    "departmentofhistory": "of Students",
+    "deptofhistory": "of Students",
+    "cofamcofficeofthedean": "COFAMC",
+    "graduatestudiesoffice": "Grad Studies & Assoc Prov",
+    "cosofficeofthedean": "COS"
+}

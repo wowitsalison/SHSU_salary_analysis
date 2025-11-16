@@ -6,9 +6,10 @@ This is an analysis of the salaries of all full-time employees at Sam Houston St
 All salary information comes from https://profiles.shsu.edu/sms049/Images/Salary.html
 
 ## Findings
+All dean salaries and corresponding graphs can be found in `dean_salaries.ccsv`.
 (Findings)
 
 ## Procedures
 1. Install `dependencies.py`
-2. Run `pdf-to-csv.py`
+2. Run `web-to-csv.py`
 3. (Analyze CSV)
